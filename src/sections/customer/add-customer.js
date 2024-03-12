@@ -1,19 +1,51 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
+import { useFormik } from "formik";
 import { useRouter } from "next/navigation";
 import PropTypes from "prop-types";
-import { Box, Divider, MenuItem, MenuList, Popover, Typography } from "@mui/material";
 import { useAuth } from "src/hooks/use-auth";
+import NextLink from "next/link";
+import * as Yup from "yup";
+import XCircleIcon from "@heroicons/react/24/solid/XCircleIcon";
 
+import {
+  Alert,
+  Box,
+  Button,
+  FormHelperText,
+  Link,
+  Stack,
+  Tab,
+  Tabs,
+  TextField,
+  Typography,
+  Popover,
+  SvgIcon,
+} from "@mui/material";
 export const TransactionPopover = (props) => {
   const { onClose, open } = props;
   const router = useRouter();
   const auth = useAuth();
-
-  const handleSignOut = useCallback(() => {
-    onClose?.();
-    auth.signOut();
-    router.push("/auth/login");
-  }, [onClose, auth, router]);
+  const formik = useFormik({
+    initialValues: {
+      email: "demo@devias.io",
+      password: "Password123!",
+      submit: null,
+    },
+    validationSchema: Yup.object({
+      email: Yup.string().email("Must be a valid email").max(255).required("Email is required"),
+      password: Yup.string().max(255).required("Password is required"),
+    }),
+    onSubmit: async (values, helpers) => {
+      try {
+        await auth.signIn(values.email, values.password);
+        router.push("/");
+      } catch (err) {
+        helpers.setStatus({ success: false });
+        helpers.setErrors({ submit: err.message });
+        helpers.setSubmitting(false);
+      }
+    },
+  });
 
   return (
     <Popover
@@ -30,28 +62,52 @@ export const TransactionPopover = (props) => {
         sx={{
           width: 1000,
           height: 600,
-          py: 1.5,
-          px: 2,
+          px: 3,
+          py: 3,
         }}
       >
-        <Typography variant="overline">Account</Typography>
-        <Typography color="text.secondary" variant="body2">
-          Anika Visser
-        </Typography>
+        <div>
+          <Stack direction="row" justifyContent="space-between" spacing={1} sx={{ mx: 3, my: 3 }}>
+            <Typography variant="h4">New Transaction</Typography>
+            <div>
+              <Button
+                startIcon={
+                  <SvgIcon fontSize="large">
+                    <XCircleIcon />
+                  </SvgIcon>
+                }
+                onClick={onClose}
+                variant="contained"
+              >
+                Close
+              </Button>
+            </div>
+          </Stack>
+          <form noValidate onSubmit={formik.handleSubmit}>
+            <Stack spacing={3}>
+              <TextField
+                fullWidth
+                label="Customer Name"
+                name="name"
+                onBlur={formik.handleBlur}
+                onChange={formik.handleChange}
+                type="name"
+              />
+              <TextField
+                fullWidth
+                label="Transaction Amount"
+                name="transaction"
+                onBlur={formik.handleBlur}
+                onChange={formik.handleChange}
+                type="number"
+              />
+            </Stack>
+            <Button fullWidth size="large" sx={{ mt: 3 }} type="submit" variant="contained">
+              Continue
+            </Button>
+          </form>
+        </div>
       </Box>
-      <Divider />
-      <MenuList
-        disablePadding
-        dense
-        sx={{
-          p: "8px",
-          "& > *": {
-            borderRadius: 1,
-          },
-        }}
-      >
-        <MenuItem onClick={handleSignOut}>Sign out</MenuItem>
-      </MenuList>
     </Popover>
   );
 };
